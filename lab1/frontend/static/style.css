@@ -1,0 +1,153 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #f4f6f8;
+    color: #172033;
+}
+
+.container {
+    width: min(900px, calc(100% - 32px));
+    margin: 64px auto;
+    display: grid;
+    gap: 24px;
+}
+
+.card {
+    background: white;
+    border: 1px solid #e4e8ee;
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: 0 12px 30px rgba(20, 33, 61, 0.06);
+}
+
+.label {
+    margin: 0 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #5d6b82;
+}
+
+h1, h2 {
+    margin-top: 0;
+}
+
+h1 {
+    margin-bottom: 8px;
+    font-size: 36px;
+}
+
+h2 {
+    margin-bottom: 0;
+    font-size: 22px;
+}
+
+.subtitle {
+    margin: 0 0 28px;
+    color: #67748a;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.form-row {
+    display: flex;
+    gap: 12px;
+}
+
+input {
+    flex: 1;
+    min-width: 0;
+    padding: 12px 14px;
+    border: 1px solid #cfd6e0;
+    border-radius: 10px;
+    font: inherit;
+}
+
+button {
+    padding: 12px 18px;
+    border: 0;
+    border-radius: 10px;
+    font: inherit;
+    font-weight: 650;
+    cursor: pointer;
+    background: #172033;
+    color: white;
+}
+
+button.secondary {
+    background: #edf1f5;
+    color: #172033;
+}
+
+.message {
+    min-height: 20px;
+    margin: 10px 0 0;
+    color: #59677d;
+    font-size: 14px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.notes-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+}
+
+.note {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #f7f9fb;
+    border: 1px solid #e9edf2;
+}
+
+.note-text {
+    overflow-wrap: anywhere;
+}
+
+.note-meta {
+    flex: 0 0 auto;
+    color: #7a8799;
+    font-size: 12px;
+}
+
+.empty-state {
+    margin: 0;
+    color: #7a8799;
+}
+
+@media (max-width: 640px) {
+    .container {
+        margin: 24px auto;
+    }
+
+    .form-row,
+    .note {
+        flex-direction: column;
+    }
+
+    .note-meta {
+        flex-basis: auto;
+    }
+}
