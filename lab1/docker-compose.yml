@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: lab0-postgres
+    container_name: lab1-postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
