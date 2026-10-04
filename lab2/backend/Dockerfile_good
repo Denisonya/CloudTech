@@ -1,0 +1,44 @@
+# Stage 1 - установка зависимостей
+FROM python:3.12.7-alpine AS builder
+
+WORKDIR /build
+
+# Сначала копируем зависимости для использования кеша Docker
+COPY requirements.txt .
+
+# Создаем виртуальное окружение и устанавливаем пакеты
+RUN python -m venv /venv
+RUN /venv/bin/pip install --no-cache-dir -r requirements.txt
+
+
+# Stage 2 - сборка итогового образа
+FROM python:3.12.7-alpine
+
+WORKDIR /app
+
+# Устанавливаем curl для HEALTHCHECK
+RUN apk add --no-cache curl
+
+# Создаем отдельного пользователя вместо root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Копируем готовое окружение из Stage 1
+COPY --from=builder /venv /venv
+
+# Копируем backend и назначаем владельца файлов
+COPY --chown=appuser:appgroup backend ./backend
+
+# Добавляем виртуальное окружение в PATH
+ENV PATH="/venv/bin:$PATH"
+
+# Запускаем приложение не от root
+USER appuser
+
+EXPOSE 8000
+
+# Проверяем, что backend отвечает
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+    CMD curl -fs http://127.0.0.1:8000/health
+
+# Запускаем backend
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
