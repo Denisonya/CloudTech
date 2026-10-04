@@ -1,0 +1,110 @@
+services:
+  db:
+    # Используем облегченный образ PostgreSQL
+    image: postgres:16-alpine
+    container_name: lab2-db
+
+    # Захватываем переменнные БД из переменных окружения
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+    # Храним данные БД в именованном томе, чтобы обеспечить их персистентность (путь, который нужно указать прописан на странице образа на Docker Hub)
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    # db подключен только к сети backend
+    networks:
+      - backend_net
+
+    # Автоматически перезапускаем контейнер при аварийном завершении
+    restart: unless-stopped
+
+    # Проверяем готовность БД принимать подключения
+    healthcheck:
+      # Данная команда прописана на странице образа на Docker Hub
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    # Ограничиваем ресурсы контейнера
+    cpus: "0.05"
+    mem_limit: 64m
+
+
+  backend:
+    # Указываем путь к собственному Dockerfile для данного сервиса
+    build:
+      context: .
+      dockerfile: backend/Dockerfile_good
+
+    image: notes-backend:good
+    container_name: lab2-backend
+
+    # Захватываем данные для подключения к db из переменных окружения
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+
+    # Backend связывает frontend и db, поэтому подключен к обеим сетям
+    networks:
+      - frontend_net
+      - backend_net
+
+    # Автоматически перезапускаем контейнер при аварийном завершении
+    restart: unless-stopped
+
+    # Запускаем backend только после готовности db
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Ограничиваем ресурсы контейнера
+    cpus: "0.25"
+    mem_limit: 80m
+
+
+  frontend:
+    # Указываем путь к собственному Dockerfile для данного сервиса
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+
+    image: notes-frontend:nginx
+    container_name: lab2-frontend
+
+    # Открываем сайт наружу на localhost:8080, делая проброс портов
+    ports:
+      - "127.0.0.1:8080:80"
+
+    # Frontend подключен только к сети frontend
+    networks:
+      - frontend_net
+
+    # Автоматически перезапускаем контейнер при аварийном завершении
+    restart: unless-stopped
+
+    # Запускаем frontend только после готовности backend
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # Ограничиваем ресурсы контейнера
+    cpus: "0.10"
+    mem_limit: 32m
+
+
+volumes:
+  # Именованный volume для хранения данных сервиса db
+  postgres_data:
+
+
+networks:
+  # Создаем разные сети для взаимодействия backend с frontend и db, чтобы разделить их
+  frontend_net:
+  backend_net:
