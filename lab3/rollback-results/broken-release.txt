@@ -1,0 +1,40 @@
+Проверка frontend: http://127.0.0.1:8083/
+HTTP 200
+Проверка NGINX: http://127.0.0.1:8083/healthz
+ok
+HTTP 200
+Проверка API и PostgreSQL: http://127.0.0.1:8083/api/notes
+[]
+HTTP 200
+Сервис доступен после деплоя.
+DEPRECATED: The legacy builder is deprecated and will be removed in a future release.
+            BuildKit is currently disabled; enable it by removing the DOCKER_BUILDKIT=0
+            environment-variable.
+
+Sending build context to Docker daemon  2.048kB
+Step 1/2 : FROM ghcr.io/denisonya/cloudtech-backend@sha256:769e454291e5af8f60189fadc01e8346fab2bc37cb08572376268d6d48657aa9
+ ---> 769e454291e5
+Step 2/2 : CMD ["python", "-m", "backend.rollback_missing"]
+ ---> Running in 0a247cca3d71
+ ---> Removed intermediate container 0a247cca3d71
+ ---> 6b3c58e85d67
+Successfully built 6b3c58e85d67
+Successfully tagged cloudtech-lab3-broken:rollback-demo-20261105T112647Z
+Рабочий релиз перед демонстрацией: 4cd74c9eb08fdb47dc555a97d524585409488aa6
+Битый образ: cloudtech-lab3-broken:rollback-demo-20261105T112647Z
+ Container lab3-backend-1  Recreate
+ Container lab3-backend-1  Recreated
+ Container lab3-backend-1  Starting
+ Container lab3-backend-1  Started
+ Container lab3-backend-1  Waiting
+container lab3-backend-1 is unhealthy
+NAME              IMAGE                                                                                                          COMMAND                  SERVICE    CREATED          STATUS                                  PORTS
+lab3-backend-1    cloudtech-lab3-broken:rollback-demo-20261105T112647Z                                                           "python -m backend.r…"   backend    2 seconds ago    Restarting (1) Less than a second ago   
+lab3-db-1         postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea                     "docker-entrypoint.s…"   db         23 minutes ago   Up 23 minutes (healthy)                 5432/tcp
+lab3-frontend-1   ghcr.io/denisonya/cloudtech-frontend@sha256:3667be7a9de463f12cfba75994e7e36dd932ec4351774446ce10e7289af8556c   "/docker-entrypoint.…"   frontend   9 minutes ago    Up 9 minutes (healthy)                  127.0.0.1:8083->80/tcp
+backend-1  | /venv/bin/python: No module named backend.rollback_missing
+backend-1  | /venv/bin/python: No module named backend.rollback_missing
+backend-1  | /venv/bin/python: No module named backend.rollback_missing
+curl: (28) Operation timed out after 10002 milliseconds with 0 bytes received
+API после сломанного деплоя: HTTP 000
+Сломанный деплой подтвержден. Восстановление: bash lab3/rollback.sh
