@@ -18,6 +18,9 @@ on:
       - "lab3/scan.sh"
       - "lab3/scan-summary.py"
       - "lab3/publish.sh"
+      - "lab3/docker-compose.deploy.yml"
+      - "lab3/deploy.sh"
+      - "lab3/smoke.sh"
 
 permissions:
   contents: read
@@ -129,3 +132,44 @@ jobs:
           path: lab3/release/images.env
           retention-days: 30
           if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/lab3'
+    runs-on: [self-hosted, Linux, X64, lab3-deploy]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: cloudtech-lab3-deploy
+      cancel-in-progress: false
+    env:
+      DOCKER_CONFIG: ${{ runner.temp }}/lab3-ghcr-${{ github.run_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Download image references
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: lab3/release
+
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy scanned images
+        id: deploy
+        run: bash lab3/deploy.sh
+
+      - name: Check live service
+        env:
+          SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+        run: bash lab3/smoke.sh "$SERVICE_URL"

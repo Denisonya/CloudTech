@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - backend_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    cpus: "0.50"
+    mem_limit: 256m
+
+  backend:
+    # Ссылку с digest передает успешная задача публикации.
+    image: ${BACKEND_IMAGE:?}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+    networks:
+      - frontend_net
+      - backend_net
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    cpus: "0.50"
+    mem_limit: 256m
+
+  frontend:
+    image: ${FRONTEND_IMAGE:?}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8083}:80"
+    networks:
+      - frontend_net
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    cpus: "0.25"
+    mem_limit: 64m
+
+volumes:
+  postgres_data:
+
+networks:
+  frontend_net:
+  backend_net:
+    internal: true
