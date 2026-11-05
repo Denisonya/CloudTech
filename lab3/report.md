@@ -317,8 +317,17 @@ CRITICAL. Уязвимости без готового исправления н
 и frontend используем отдельные области кеша. Теги образов по-прежнему содержат
 SHA коммита, публикации и деплоя на этом этапе еще нет.
 
-После push проверим, что тесты проходят, образы собираются, а шаг Trivy падает
-из-за CRITICAL. Для отчета сохраним `trivy_failed_run.png` с общим результатом
-и таблицей HIGH/CRITICAL из Summary и `trivy_failed_details.png` с результатом
-сканирования и ошибкой в шаге **Scan images and block CRITICAL**.
-Скриншоты и результаты GitHub добавим после фактического запуска.
+После push коммита `78b532f` получили ожидаемый красный прогон:
+
+![Trivy блокирует образы с CRITICAL](screenshots/trivy_failed_run.png)
+
+Задача `check` успешна, а задача `build` завершилась с ошибкой на шаге
+**Scan images and block CRITICAL**. Общий прогон занял **2 минуты 32 секунды**.
+Сводка GitHub совпала с локальным результатом: backend - 2518 HIGH и 228 CRITICAL,
+frontend - 65 HIGH и 4 CRITICAL.
+
+![Ошибка security-gate и сохранение отчетов](screenshots/trivy_failed_details.png)
+
+В логе видны четыре CRITICAL во frontend и завершение с кодом 1. Шаг
+**Upload Trivy reports** успешен, несмотря на ошибку сканирования: отчеты
+сохранены как артефакт. Таким образом, security-gate действительно работает.
