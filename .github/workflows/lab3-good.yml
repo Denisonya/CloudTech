@@ -144,9 +144,12 @@ jobs:
     concurrency:
       group: cloudtech-lab3-deploy
       cancel-in-progress: false
-    env:
-      DOCKER_CONFIG: ${{ runner.temp }}/lab3-ghcr-${{ github.run_id }}
     steps:
+      - name: Prepare temporary Docker configuration
+        run: |
+          docker_config=$(mktemp -d "$RUNNER_TEMP/lab3-ghcr.XXXXXX")
+          echo "DOCKER_CONFIG=$docker_config" >> "$GITHUB_ENV"
+
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
