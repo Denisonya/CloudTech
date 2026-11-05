@@ -13,6 +13,7 @@ on:
       - "lab3/pyproject.toml"
       - "lab3/tests/**"
       - "lab3/backend/**"
+      - "lab3/nginx/**"
       - "lab3/install-trivy.sh"
       - "lab3/scan.sh"
       - "lab3/scan-summary.py"
@@ -33,7 +34,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
-          python-version: "3.12.7"
+          python-version: "3.12.16"
           cache: pip
           cache-dependency-path: |
             lab2/requirements.txt
@@ -76,7 +77,7 @@ jobs:
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ./lab2
-          file: ./lab2/nginx/Dockerfile
+          file: ./lab3/nginx/Dockerfile
           tags: notes-frontend:${{ github.sha }}
           load: true
           push: false

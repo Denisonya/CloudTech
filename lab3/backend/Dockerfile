@@ -1,14 +1,17 @@
-# Исходный полный образ для демонстрации уязвимостей до исправления.
-FROM python:3.12.7@sha256:8d97a0ab83113f8984517f14492f57186d943db7815682cab9d820c9c0a8c998 AS builder
+# Облегченный актуальный Python, закрепленный по digest.
+FROM python:3.12.16-slim-trixie@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30 AS builder
 
 WORKDIR /build
 COPY requirements.txt .
 RUN python -m venv /venv     && /venv/bin/pip install --no-cache-dir -r requirements.txt
 
-FROM python:3.12.7@sha256:8d97a0ab83113f8984517f14492f57186d943db7815682cab9d820c9c0a8c998
+FROM python:3.12.16-slim-trixie@sha256:b18b261e1b4974b4f321451ad5251ded85abb22c2b8b262da527dda1d031ab30
 
 WORKDIR /app
-RUN groupadd --system appgroup     && useradd --system --gid appgroup appuser
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system appgroup     && useradd --system --gid appgroup appuser
 COPY --from=builder /venv /venv
 COPY --chown=appuser:appgroup backend ./backend
 ENV PATH="/venv/bin:$PATH"
