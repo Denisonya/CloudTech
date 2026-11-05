@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 PYTHON="${PYTHON:-python}"
 
 echo "Проверка кода Ruff:"
-"$PYTHON" -m ruff check --config lab3/pyproject.toml lab2/backend lab3/tests
+"$PYTHON" -m ruff check --config lab3/pyproject.toml lab2/backend lab3/tests lab3/scan-summary.py
 
 # Пароль создается заново при каждом запуске и не сохраняется в репозитории.
 export TEST_DB_PASSWORD

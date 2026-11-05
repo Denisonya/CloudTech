@@ -12,6 +12,10 @@ on:
       - "lab3/requirements-dev.txt"
       - "lab3/pyproject.toml"
       - "lab3/tests/**"
+      - "lab3/backend/**"
+      - "lab3/install-trivy.sh"
+      - "lab3/scan.sh"
+      - "lab3/scan-summary.py"
 
 permissions:
   contents: read
@@ -42,23 +46,56 @@ jobs:
         run: bash lab3/check.sh
 
   build:
-    # Сборка запускается только после успешного прохождения lint и тестов.
+    # Сборка и сканирование разрешены только после успешных проверок.
     needs: check
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=moby/buildkit:v0.23.2
+
       - name: Build backend image
-        run: docker build -f backend/Dockerfile_good -t "notes-backend:$GITHUB_SHA" .
-        working-directory: lab2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./lab2
+          file: ./lab3/backend/Dockerfile
+          tags: notes-backend:${{ github.sha }}
+          load: true
+          push: false
+          cache-from: type=gha,scope=lab3-backend
+          cache-to: type=gha,mode=max,scope=lab3-backend
 
       - name: Build frontend image
-        run: docker build -f nginx/Dockerfile -t "notes-frontend:$GITHUB_SHA" .
-        working-directory: lab2
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./lab2
+          file: ./lab2/nginx/Dockerfile
+          tags: notes-frontend:${{ github.sha }}
+          load: true
+          push: false
+          cache-from: type=gha,scope=lab3-frontend
+          cache-to: type=gha,mode=max,scope=lab3-frontend
 
-      - name: Show built images
-        run: docker image ls --filter reference='notes-*'
+      - name: Install Trivy
+        run: bash lab3/install-trivy.sh
+
+      - name: Scan images and block CRITICAL
+        id: scan
+        run: bash lab3/scan.sh "notes-backend:$GITHUB_SHA" "notes-frontend:$GITHUB_SHA"
+
+      # Отчеты сохраняются и при срабатывании security-gate.
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trivy-${{ github.sha }}
+          path: lab3/trivy-reports/
+          retention-days: 30
+          if-no-files-found: warn
