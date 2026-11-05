@@ -25,7 +25,7 @@ frontend (NGINX) -> backend (FastAPI) -> db (PostgreSQL)
 
 ![Две стороны CI: плохой и хороший пайплайн](images/arthas-pipelines.png)
 
-*Слева — «главное, чтобы собралось». Справа — «сначала тесты и Trivy, потом деплой».*
+*Артас Пайплайнович*
 
 Конфигурации GitHub Actions будем хранить в `.github/workflows/`, а материалы работы
 и скриншоты - в `lab3/`.
