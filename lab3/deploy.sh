@@ -51,6 +51,7 @@ compose=(docker compose -p "$project" --env-file "$deploy_dir/.env" \
 
 # Только скачиваем проверенные образы, сборки на машине деплоя нет.
 "${compose[@]}" pull
+printf '%s\n' "$image_tag" > "$deploy_dir/failed-release"
 "${compose[@]}" up -d --no-build --pull never --wait --wait-timeout 120
 "${compose[@]}" ps
 
@@ -58,6 +59,7 @@ address="$("${compose[@]}" port frontend 80)"
 [[ "$address" =~ ^127\.0\.0\.1:[0-9]+$ ]] \
     || { echo "Не удалось определить адрес frontend" >&2; exit 1; }
 service_url="http://$address"
+bash lab3/smoke.sh "$service_url"
 
 # Сохраняем сведения о текущем и предыдущем релизах.
 if [[ -f "$deploy_dir/current-release" ]]; then
@@ -67,6 +69,7 @@ if [[ -f "$deploy_dir/current-release" ]]; then
     fi
 fi
 printf '%s\n' "$image_tag" > "$deploy_dir/current-release"
+rm -f "$deploy_dir/failed-release"
 echo "Релиз $image_tag развернут: $service_url"
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
     printf 'service_url=%s\n' "$service_url" >> "$GITHUB_OUTPUT"
