@@ -11,3 +11,4 @@ Repository for Cloud technologies labs
 | 0        | [lab0](lab0/report.md) |
 | 1        | [lab1](lab1/report.md) |
 | 2        | [lab2](lab2/report.md) |
+| 3        | [lab3](lab3/report.md) |
