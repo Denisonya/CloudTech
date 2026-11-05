@@ -1,0 +1,36 @@
+name: Lab3 - Bad pipeline
+
+on:
+  push:
+    branches:
+      - lab3
+    paths:
+      - ".github/workflows/lab3-bad.yml"
+      - "lab2/**"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # BAD: версия окружения runner может меняться.
+    runs-on: ubuntu-latest
+
+    steps:
+      # BAD: тег версии action может измениться, в отличие от SHA коммита.
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # BAD: начинаем сборку без lint, тестов и сканирования уязвимостей.
+      # BAD: отключаем кеш, поэтому зависимости устанавливаются при каждой сборке.
+      # BAD: используем только latest, без привязки образа к коммиту.
+      - name: Build backend image
+        run: docker build --no-cache -f backend/Dockerfile_good -t notes-backend:latest .
+        working-directory: lab2
+
+      - name: Build frontend image
+        run: docker build --no-cache -f nginx/Dockerfile -t notes-frontend:latest .
+        working-directory: lab2
+
+      - name: Show built images
+        run: docker image ls --filter reference='notes-*'

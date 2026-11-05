@@ -1,0 +1,178 @@
+name: Lab3 - Good pipeline
+
+on:
+  push:
+    branches:
+      - lab3
+    paths:
+      - ".github/workflows/lab3-good.yml"
+      - "lab2/**"
+      - "lab3/check.sh"
+      - "lab3/docker-compose.test.yml"
+      - "lab3/requirements-dev.txt"
+      - "lab3/pyproject.toml"
+      - "lab3/tests/**"
+      - "lab3/backend/**"
+      - "lab3/nginx/**"
+      - "lab3/install-trivy.sh"
+      - "lab3/scan.sh"
+      - "lab3/scan-summary.py"
+      - "lab3/publish.sh"
+      - "lab3/docker-compose.deploy.yml"
+      - "lab3/deploy.sh"
+      - "lab3/smoke.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: "3.12.16"
+          cache: pip
+          cache-dependency-path: |
+            lab2/requirements.txt
+            lab3/requirements-dev.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r lab3/requirements-dev.txt
+
+      - name: Lint and test
+        run: bash lab3/check.sh
+
+  build:
+    permissions:
+      contents: read
+      packages: write
+    # Сборка и сканирование разрешены только после успешных проверок.
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver-opts: image=moby/buildkit:v0.23.2
+
+      - name: Build backend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./lab2
+          file: ./lab3/backend/Dockerfile
+          tags: notes-backend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          load: true
+          push: false
+          cache-from: type=gha,scope=lab3-backend
+          cache-to: type=gha,mode=max,scope=lab3-backend
+
+      - name: Build frontend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./lab2
+          file: ./lab3/nginx/Dockerfile
+          tags: notes-frontend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          load: true
+          push: false
+          cache-from: type=gha,scope=lab3-frontend
+          cache-to: type=gha,mode=max,scope=lab3-frontend
+
+      - name: Install Trivy
+        run: bash lab3/install-trivy.sh
+
+      - name: Scan images and block CRITICAL
+        id: scan
+        run: bash lab3/scan.sh "notes-backend:$GITHUB_SHA" "notes-frontend:$GITHUB_SHA"
+
+      # Отчеты сохраняются и при срабатывании security-gate.
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trivy-${{ github.sha }}
+          path: lab3/trivy-reports/
+          retention-days: 30
+          if-no-files-found: warn
+
+      # Эти шаги выполняются только после успешного сканирования.
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish scanned images
+        run: bash lab3/publish.sh
+
+      - name: Upload image references
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: lab3/release/images.env
+          retention-days: 30
+          if-no-files-found: error
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/lab3'
+    runs-on: [self-hosted, Linux, X64, lab3-deploy]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: cloudtech-lab3-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Prepare temporary Docker configuration
+        run: |
+          docker_config=$(mktemp -d "$RUNNER_TEMP/lab3-ghcr.XXXXXX")
+          echo "DOCKER_CONFIG=$docker_config" >> "$GITHUB_ENV"
+
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Download image references
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: lab3/release
+
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Deploy scanned images
+        id: deploy
+        run: bash lab3/deploy.sh
+
+      - name: Check live service
+        env:
+          SERVICE_URL: ${{ steps.deploy.outputs.service_url }}
+        run: bash lab3/smoke.sh "$SERVICE_URL"

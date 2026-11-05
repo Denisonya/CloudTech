@@ -1,0 +1,18 @@
+services:
+  db:
+    # Отдельная временная база для тестов, образ закреплен по digest.
+    image: postgres:16-alpine@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
+    environment:
+      POSTGRES_DB: lab3_test
+      POSTGRES_USER: lab3_test
+      POSTGRES_PASSWORD: ${TEST_DB_PASSWORD:?Запустите проверку через check.sh}
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT:-55433}:5432"
+    # Тестовые данные не сохраняются на диске.
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab3_test -d lab3_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
