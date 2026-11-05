@@ -17,6 +17,7 @@ on:
       - "lab3/install-trivy.sh"
       - "lab3/scan.sh"
       - "lab3/scan-summary.py"
+      - "lab3/publish.sh"
 
 permissions:
   contents: read
@@ -47,6 +48,9 @@ jobs:
         run: bash lab3/check.sh
 
   build:
+    permissions:
+      contents: read
+      packages: write
     # Сборка и сканирование разрешены только после успешных проверок.
     needs: check
     runs-on: ubuntu-24.04
@@ -68,6 +72,9 @@ jobs:
           context: ./lab2
           file: ./lab3/backend/Dockerfile
           tags: notes-backend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
           load: true
           push: false
           cache-from: type=gha,scope=lab3-backend
@@ -79,6 +86,9 @@ jobs:
           context: ./lab2
           file: ./lab3/nginx/Dockerfile
           tags: notes-frontend:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
           load: true
           push: false
           cache-from: type=gha,scope=lab3-frontend
@@ -100,3 +110,22 @@ jobs:
           path: lab3/trivy-reports/
           retention-days: 30
           if-no-files-found: warn
+
+      # Эти шаги выполняются только после успешного сканирования.
+      - name: Log in to GHCR
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish scanned images
+        run: bash lab3/publish.sh
+
+      - name: Upload image references
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ github.sha }}
+          path: lab3/release/images.env
+          retention-days: 30
+          if-no-files-found: error

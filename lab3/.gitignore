@@ -1,3 +1,4 @@
 .tools/
 .trivy-cache/
 trivy-reports/
+release/
